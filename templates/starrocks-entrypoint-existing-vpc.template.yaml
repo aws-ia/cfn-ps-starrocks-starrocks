@@ -1,0 +1,441 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy StarRocks on Amazon Web Services in an existing VPC. (qs-1t907q13q)
+Metadata:
+  QSLint:
+    Exclusions: [ W9002, W9003, W9004, W9006 ]
+  QuickStartDocumentation:
+    EntrypointName: Launch into an existing VPC
+    Order: "5"
+  cfn-lint:
+    config:
+      ignore_checks:
+        - E9101
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: Network Configuration
+        Parameters:
+          - VPCID
+          - VPCCIDR
+          - PrivateSubnet1ID
+          - PublicSubnet1ID
+          - PublicSubnet2ID
+      - Label:
+          default: Quick Start configuration
+        Parameters:
+          - QSS3BucketName
+          - QSS3KeyPrefix
+          - QSS3BucketRegion
+          - BastionEnabled
+          - RemoteAccessCIDR
+      - Label:
+          default: EC2 configuration
+        Parameters:
+          - KeyPairName
+      - Label:
+          default: Environment configuration
+        Parameters:
+          - SpecifiedAmiId
+          - JDKDownLoadURL
+          - StarRocksDownLoadURL
+
+    # StarRocks Cluster configuration
+      - Label:
+          default: StarRocks cluster configuration
+        Parameters:
+          - FeNodeCount
+          - FeNodeInstanceType
+          - BeNodeCount
+          - BeNodeInstanceType
+          - RootPassword
+          - ConfirmRootPassword
+
+    # Fe configuration
+      - Label:
+          default: Starrocks FE node configuration
+        Parameters:
+          - LogDir
+          - LogLevel
+          - MetaDir
+
+    # BE configuration
+      - Label:
+          default: Starrocks BE node configuration
+        Parameters:
+          - SysLogDir
+          - SysLogLevel
+          - VolumeType
+          - VolumeSize
+    ParameterLabels:
+      PublicSubnet1ID:
+        default: Public subnet 1 ID
+      PublicSubnet2ID:
+        default: Public subnet 2 ID
+      PrivateSubnet1ID:
+        default: Private subnet 1 ID
+      QSS3BucketName:
+        default: Quick Start S3 bucket name
+      QSS3KeyPrefix:
+        default: Quick Start S3 key prefix
+      QSS3BucketRegion:
+        default: Quick Start S3 bucket Region
+      BastionEnabled:
+        default: Bastion enabled
+      RemoteAccessCIDR:
+        default: Allowed bastion external access CIDR
+      VPCID:
+        default: VPC ID
+      VPCCIDR:
+        default: VPC CIDR
+      KeyPairName:
+        default: Key pair name
+      SpecifiedAmiId:
+        default: (Optional)Specified AMI ID.
+      JDKDownLoadURL:
+        default: JDK 1.8 download URL
+      StarRocksDownLoadURL:
+        default: StarRocks download URL
+      FeNodeCount:
+        default: Number of StarRocks FE nodes
+      FeNodeInstanceType:
+        default: StarRocks FE instance type
+      BeNodeCount:
+        default: Number of StarRocks BE nodes
+      BeNodeInstanceType:
+        default: StarRocks BE instance type
+      RootPassword:
+        default: (Required)Root Password of Starrock
+      ConfirmRootPassword:
+        default: (Required)Confirm Root Password
+
+      # FE
+      LogLevel:
+        default: StarRocks FE syslog level
+      MetaDir:
+        default: Metadata directory
+      LogDir:
+        default: Log directory
+
+      # BE
+      SysLogLevel:
+        default: StarRocks BE syslog level
+      VolumeType:
+        default: BE nodes volume type
+      VolumeSize:
+        default: BE nodes volume size
+      SysLogDir:
+        default: Default sysLog directory
+Parameters:
+  PublicSubnet1ID:
+    Type: "AWS::EC2::Subnet::Id"
+    Description: ID of the public subnet in Availability Zone 1 of your existing VPC (for example, subnet-a0246dcd).
+  PublicSubnet2ID:
+    Type: "AWS::EC2::Subnet::Id"
+    Description: ID of the public subnet in Availability Zone 2 of your existing VPC (for example, subnet-b1236eea).
+  PrivateSubnet1ID:
+    Type: "AWS::EC2::Subnet::Id"
+    Description: ID of the private subnet in Availability Zone 1 of your existing VPC (for example, subnet-fe9a8b32).
+  QSS3BucketName:
+    AllowedPattern: '^[0-9a-zA-Z]+([0-9a-zA-Z-]*[0-9a-zA-Z])*$'
+    ConstraintDescription:
+      The S3 bucket name can include numbers, lowercase letters, uppercase letters,
+      and hyphens (-), but it cannot start or end with a hyphen.
+    Default: aws-quickstart
+    Description:
+      'Name of the S3 bucket for your copy of the deployment assets. Keep the default
+      name unless you are customizing the template. Changing the name updates code
+      references to point to a new location.'
+    Type: String
+  KeyPairName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Public/private key pairs to connect to your instance after deployment.
+  BastionEnabled:
+    Type: String
+    Default: true
+    AllowedValues:
+      - true
+      - false
+  RemoteAccessCIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))$
+    Type: String
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/x
+    Description: Allowed CIDR block for external SSH access to the bastions
+    Default: 10.0.0.0/16
+  VPCID:
+    Type: "AWS::EC2::VPC::Id"
+    Description: ID of your existing VPC (for example, vpc-0343606e).
+  VPCCIDR:
+    AllowedPattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/(1[6-9]|2[0-8]))$
+    ConstraintDescription: CIDR block parameter must be in the form x.x.x.x/16–28
+    Default: 10.0.0.0/16
+    Description: CIDR block for the VPC.
+    Type: String
+  QSS3KeyPrefix:
+    AllowedPattern: '^[0-9a-zA-Z-/]*$'
+    ConstraintDescription:
+      The S3 key prefix can include numbers, lowercase letters, uppercase letters,
+      hyphens (-), and forward slashes (/). End the prefix with a forward slash.
+    Default: quickstart-starrocks-starrocks/
+    Description:
+      'S3 key prefix that is used to simulate a folder for your copy of the
+      deployment assets. Keep the default prefix unless you are customizing
+      the template. Changing the prefix updates code references to point to
+      a new location.'
+    Type: String
+  QSS3BucketRegion:
+    Default: 'us-east-1'
+    Description: 'AWS Region where the S3 bucket (QSS3BucketName) is hosted. Keep
+    the default Region unless you are customizing the template. Changing the Region
+    updates code references to point to a new location. When using your own bucket,
+    specify the Region.'
+    Type: String
+  SpecifiedAmiId:
+    Description: Specified EC2 AMI ID.
+    Type: String
+    AllowedPattern: "(^$|^ami-[a-z0-9]+)"
+    ConstraintDescription: SpecifiedAmiId parameter must be in the form ami-***. 
+    Default: ''
+  JDKDownLoadURL:
+    Description: URL to download Java Development Kit (JDK) 1.8 tar.gz file.
+    Type: String
+    Default: https://cloud-release.celerdata.com/thirdparty/java-se-8u322-b06.tar.gz
+  StarRocksDownLoadURL:
+    Description: URL to download the StarRocks tar.gz file.
+    Type: String
+    Default: https://releases.starrocks.io/starrocks/StarRocks-2.5.1.tar.gz
+  FeNodeCount:
+    Type: Number
+    Default: 1
+    Description: Number of StarRocks FE nodes to deploy (1 or 3).
+    AllowedValues:
+      - 1
+      - 3
+  FeNodeInstanceType:
+    AllowedValues:
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - t3.micro
+      - t3.small
+      - t3.medium
+      - t3.large
+      - t3.xlarge
+      - t3.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - m5.large
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - r5.large
+      - r5.xlarge
+      - r5.2xlarge
+      - r5.4xlarge
+      - r5.8xlarge
+      - i3.large
+      - i3.xlarge
+      - i3.2xlarge
+      - i3.4xlarge
+      - i3.8xlarge
+      - i3.16xlarge
+    Default: t2.micro
+    Description: Amazon EC2 instance type for StarRocks FE nodes.
+    Type: String
+  BeNodeCount:
+    Type: Number
+    Default: 3
+    Description: Number of StarRocks BE nodes to deploy (3, 4, 5, or 6).
+    AllowedValues:
+      - 3
+      - 4
+      - 5
+      - 6
+  BeNodeInstanceType:
+    AllowedValues:
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - t3.micro
+      - t3.small
+      - t3.medium
+      - t3.large
+      - t3.xlarge
+      - t3.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - m5.large
+      - m5.xlarge
+      - m5.2xlarge
+      - m5.4xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - r5.large
+      - r5.xlarge
+      - r5.2xlarge
+      - r5.4xlarge
+      - r5.8xlarge
+      - i3.large
+      - i3.xlarge
+      - i3.2xlarge
+      - i3.4xlarge
+      - i3.8xlarge
+      - i3.16xlarge
+    Default: t2.micro
+    Description: Amazon EC2 instance type for BE instances.
+    Type: String
+  RootPassword:
+    NoEcho: true
+    Type: String
+    MinLength: 12
+    MaxLength: 32
+    AllowedPattern: '^[a-zA-Z0-9]*$'
+    Description: Root Password, The minimum length that can be specified is 12, and the maximum length that can be specified is 32. The pattern allows lowercase and uppercase alphabetical characters and numerals.
+  ConfirmRootPassword:
+    NoEcho: true
+    Type: String
+    MinLength: 12
+    MaxLength: 32
+    AllowedPattern: '^[a-zA-Z0-9]*$'
+    Description: Confirm Root Password.
+  
+  # Fe
+  LogLevel:
+    Description: Starrock FE syslog level.
+    Type: String
+    Default: INFO
+    AllowedValues:
+      - INFO
+      - WARN
+      - ERROR
+      - FATAL
+  MetaDir:
+    Description: Absolute path to the metadata directory.
+    Type: String
+    Default: feDefaultMetaPath
+
+  # Be
+  SysLogLevel:
+    Description: Starrock BE syslog level.
+    Type: String
+    Default: INFO
+    AllowedValues:
+      - INFO
+      - WARN
+      - ERROR
+      - FATAL
+  VolumeType:
+    Type: String
+    Description: Type of data-storage EBS volume mounted to BE node.
+    Default: gp2
+    AllowedValues:
+      - gp2
+      - gp3
+      - st1
+      - io1
+  VolumeSize:
+    Type: String
+    Description: Size of data-storage EBS volume mounted to BE node (in GBs).
+    Default: 50
+  LogDir:
+    Type: String
+    Description: Default path for log files.
+    Default: feDefaultLogPath
+  SysLogDir:
+    Type: String
+    Description: Default path for syslog files.
+    Default: beDefaultLogPath
+Conditions:
+  IsBastionEnabled: !Equals [!Ref "BastionEnabled", "true"]
+  4BeNodesCondition: !Or
+    - !Equals [ !Ref 'BeNodeCount', '4' ]
+    - !Equals [ !Ref 'BeNodeCount', '5' ]
+    - !Equals [ !Ref 'BeNodeCount', '6' ]
+  5BeNodesCondition: !Or
+    - !Equals [ !Ref 'BeNodeCount', '5' ]
+    - !Equals [ !Ref 'BeNodeCount', '6' ]
+  6BeNodesCondition: !Equals [ !Ref 'BeNodeCount', '6' ]
+  UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'aws-quickstart']
+Rules:
+  matchPasswords:
+    Assertions:
+      - Assert:
+          Fn::Equals:
+            - Ref: 'RootPassword'
+            - Ref: 'ConfirmRootPassword'
+Resources:
+  BastionStack:
+    Condition: IsBastionEnabled
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}submodules/quickstart-linux-bastion/templates/linux-bastion.template'
+        - S3Region: !If [ UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion ]
+          S3Bucket: !If [ UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName ]
+      Parameters:
+        VPCID: !Ref VPCID
+        PublicSubnet1ID: !Ref PublicSubnet1ID
+        PublicSubnet2ID: !Ref PublicSubnet2ID
+        KeyPairName: !Ref KeyPairName
+        QSS3BucketName: !Ref QSS3BucketName
+        QSS3KeyPrefix: !Sub '${QSS3KeyPrefix}submodules/quickstart-linux-bastion/'
+        QSS3BucketRegion: !Ref QSS3BucketRegion
+        RemoteAccessCIDR: !Ref RemoteAccessCIDR
+  SecurityGroupStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/starrocks_securitygroups.template.yaml'
+        - S3Region: !If [ UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion ]
+          S3Bucket: !If [ UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName ]
+      Parameters:
+        VPCID: !Ref VPCID
+        VPCCIDR: !Ref VPCCIDR
+        BastionSecurityGroupID: !If [ IsBastionEnabled, !GetAtt BastionStack.Outputs.BastionSecurityGroupID, ""]
+  StarRocksClusterStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - 'https://${S3Bucket}.s3.${S3Region}.${AWS::URLSuffix}/${QSS3KeyPrefix}templates/starrocks_cluster.template.yaml'
+        - S3Region: !If [ UsingDefaultBucket, !Ref 'AWS::Region', !Ref QSS3BucketRegion ]
+          S3Bucket: !If [ UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName ]
+      Parameters:
+        PrivateSubnetID: !Ref PrivateSubnet1ID
+        StarRocksServerSecurityGroup: !GetAtt SecurityGroupStack.Outputs.StarRocksServerSecurityGroup
+        KeyPairName: !Ref KeyPairName
+        SpecifiedAmiId: !Ref SpecifiedAmiId
+        JDKDownLoadURL: !Ref JDKDownLoadURL
+        StarRocksDownLoadURL: !Ref StarRocksDownLoadURL
+        FeNodeInstanceType: !Ref FeNodeInstanceType
+        FeNodeCount: !Ref FeNodeCount
+        FeSysLogDir: !Ref LogDir
+        FeSysLogLevel: !Ref LogLevel
+        FeMetaDir: !Ref MetaDir
+        BeNodeCount: !Ref BeNodeCount
+        BeNodeInstanceType: !Ref BeNodeInstanceType
+        BeSysLogDir: !Ref SysLogDir
+        BeSysLogLevel: !Ref SysLogLevel
+        VolumeType: !Ref VolumeType
+        VolumeSize: !Ref VolumeSize
+        QSS3BucketName: !If [ UsingDefaultBucket, !Sub '${QSS3BucketName}-${AWS::Region}', !Ref QSS3BucketName ]
+        QSS3KeyPrefix: !Ref QSS3KeyPrefix
+        RootPassword: !Ref RootPassword 
+Outputs:
+  Postdeployment:
+    Description: See the deployment guide for postdeployment steps.
+    Value: https://fwd.aws/qeAwq?
