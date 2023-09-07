@@ -86,10 +86,10 @@ Metadata:
         default: IOPS of Be nodes
 Parameters:
   QSS3BucketName:
-    Default: aws-quickstart
+    Default: aws-ia-us-east-1
     Type: String
   QSS3KeyPrefix:
-    Default: quickstart-starrocks-starrocks/
+    Default: cfn-ps-starrocks-starrocks/
     Type: String
   PrivateSubnetID:
     Description: The Private Subnet ID that you want to deploy Fe nodes.
