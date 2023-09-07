@@ -1,5 +1,5 @@
 project:
-  name: quickstart-starrocks-starrocks
+  name: cfn-ps-starrocks-starrocks
   owner: quickstart-eng@amazon.com
   s3_regional_buckets: true
   regions:
@@ -39,7 +39,7 @@ tests:
       PublicSubnet3CIDR: 10.0.160.0/20
       PublicSubnet4CIDR: 10.0.176.0/20
       QSS3BucketName: $[taskcat_autobucket]
-      QSS3KeyPrefix: quickstart-starrocks-starrocks/
+      QSS3KeyPrefix: cfn-ps-starrocks-starrocks/
       RemoteAccessCIDR: 10.0.0.0/16
       VPCCIDR: 10.0.0.0/16
       QSS3BucketRegion: $[taskcat_current_region]
