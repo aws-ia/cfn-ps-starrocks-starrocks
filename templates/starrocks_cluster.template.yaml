@@ -86,7 +86,7 @@ Metadata:
         default: IOPS of Be nodes
 Parameters:
   QSS3BucketName:
-    Default: aws-ia-us-east-1
+    Default: aws-ia
     Type: String
   QSS3KeyPrefix:
     Default: cfn-ps-starrocks-starrocks/
