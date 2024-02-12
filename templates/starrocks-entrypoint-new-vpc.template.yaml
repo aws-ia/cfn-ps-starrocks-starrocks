@@ -194,7 +194,7 @@ Parameters:
     ConstraintDescription:
       The S3 bucket name can include numbers, lowercase letters, uppercase letters,
       and hyphens (-), but it cannot start or end with a hyphen.
-    Default: aws-ia-us-east-1
+    Default: aws-ia
     Description:
       'Name of the S3 bucket for your copy of the deployment assets. Keep the default
       name unless you are customizing the template. Changing the name updates code
@@ -404,7 +404,7 @@ Parameters:
     Default: beDefaultLogPath
 Conditions:
   IsBastionEnabled: !Equals [!Ref "BastionEnabled", "true"]
-  UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'aws-ia-us-east-1']
+  UsingDefaultBucket: !Equals [!Ref QSS3BucketName, 'aws-ia']
   4BeNodesCondition: !Or
     - !Equals [!Ref 'BeNodeCount', '4']
     - !Equals [!Ref 'BeNodeCount', '5']
